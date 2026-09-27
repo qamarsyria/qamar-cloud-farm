@@ -5,33 +5,25 @@ import urllib.error
 from datetime import datetime
 
 token = os.environ["GITHUB_TOKEN"]
+print("Token present:", bool(token), "| Length:", len(token))
 
-print("=" * 60)
-print("Starting AI Post Generation")
-print("Token length:", len(token) if token else 0)
-print("=" * 60)
+url = "https://models.inference.ai.azure.com/chat/completions"
+print("URL:", url)
 
-url = "https://models.github.ai/inference/chat/completions"
 payload = {
-    "model": "openai/gpt-4o-mini",
+    "model": "gpt-4o-mini",
     "messages": [
-        {
-            "role": "system",
-            "content": "أنت كاتب محتوى عربي محترف. اكتب مقالات واضحة ومفيدة باللغة العربية الفصحى."
-        },
-        {
-            "role": "user",
-            "content": "اكتب مقالاً قصيراً (4-5 أسطر) عن فوائد القراءة اليومية. أضف عنواناً جذاباً في البداية."
-        }
+        {"role": "system", "content": "أنت كاتب محتوى عربي محترف. اكتب بلغة عربية فصحى واضحة."},
+        {"role": "user", "content": "اكتب مقالاً قصيراً (4-5 أسطر) بعنوان جذاب عن فوائد القراءة اليومية."}
     ],
     "temperature": 0.7,
     "max_tokens": 800
 }
 
 headers = {
-    "Accept": "application/json",
+    "Content-Type": "application/json",
     "Authorization": f"Bearer {token}",
-    "Content-Type": "application/json"
+    "Accept": "application/json",
 }
 
 req = urllib.request.Request(
@@ -42,37 +34,35 @@ req = urllib.request.Request(
 )
 
 try:
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=90) as resp:
         status = resp.status
-        body = resp.read().decode("utf-8")
+        body = resp.read().decode("utf-8", errors="replace")
 except urllib.error.HTTPError as e:
     status = e.code
-    body = e.read().decode("utf-8")
+    body = e.read().decode("utf-8", errors="replace")
 except Exception as e:
     status = "EXCEPTION"
     body = f"{type(e).__name__}: {e}"
 
-print("STATUS CODE:", status)
+print("STATUS:", status)
+print("BODY LENGTH:", len(body))
+print("BODY (first 1500 chars):")
+print(body[:1500])
+print("=" * 60)
 
-if status != 200:
-    print("RAW RESPONSE:", body[:2000])
-    raise SystemExit(f"Request failed with status {status}")
+if status != 200 or not body.strip():
+    raise SystemExit(f"Request failed. Status={status}")
 
 data = json.loads(body)
 content = data["choices"][0]["message"]["content"]
 
-print("=" * 60)
 print("GENERATED CONTENT:")
 print(content)
 print("=" * 60)
 
 os.makedirs("posts", exist_ok=True)
-
-timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-filename = f"posts/post-{timestamp}.txt"
-
-with open(filename, "w", encoding="utf-8") as f:
+ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
+fn = f"posts/post-{ts}.txt"
+with open(fn, "w", encoding="utf-8") as f:
     f.write(content)
-
-print("FILE SAVED:", filename)
-print("DONE!")
+print("SAVED:", fn)
