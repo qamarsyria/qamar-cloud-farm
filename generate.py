@@ -2,19 +2,30 @@ import os
 import json
 import urllib.request
 import urllib.error
+from datetime import datetime
 
 token = os.environ["GITHUB_TOKEN"]
 
 print("=" * 60)
-print("Token exists:", bool(token))
+print("Starting AI Post Generation")
 print("Token length:", len(token) if token else 0)
 print("=" * 60)
 
 url = "https://models.github.ai/inference/chat/completions"
 payload = {
     "model": "openai/gpt-4o-mini",
-    "messages": [{"role": "user", "content": "قل كلمة: نجح"}],
-    "max_tokens": 20
+    "messages": [
+        {
+            "role": "system",
+            "content": "أنت كاتب محتوى عربي محترف. اكتب مقالات واضحة ومفيدة باللغة العربية الفصحى."
+        },
+        {
+            "role": "user",
+            "content": "اكتب مقالاً قصيراً (4-5 أسطر) عن فوائد القراءة اليومية. أضف عنواناً جذاباً في البداية."
+        }
+    ],
+    "temperature": 0.7,
+    "max_tokens": 800
 }
 
 headers = {
@@ -41,24 +52,27 @@ except Exception as e:
     status = "EXCEPTION"
     body = f"{type(e).__name__}: {e}"
 
-print("=" * 60)
 print("STATUS CODE:", status)
+
+if status != 200:
+    print("RAW RESPONSE:", body[:2000])
+    raise SystemExit(f"Request failed with status {status}")
+
+data = json.loads(body)
+content = data["choices"][0]["message"]["content"]
+
 print("=" * 60)
-print("RAW RESPONSE:")
-print(body[:3000])
+print("GENERATED CONTENT:")
+print(content)
 print("=" * 60)
 
-if status == 200:
-    try:
-        data = json.loads(body)
-        print("PARSED KEYS:", list(data.keys()))
-        if "choices" in data:
-            content = data["choices"][0]["message"]["content"]
-            print("CONTENT:", content)
-            with open("result.txt", "w", encoding="utf-8") as f:
-                f.write(content)
-            print("FILE SAVED!")
-        else:
-            print("NO 'choices' KEY!")
-    except Exception as e:
-        print("PARSE ERROR:", e)
+os.makedirs("posts", exist_ok=True)
+
+timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+filename = f"posts/post-{timestamp}.txt"
+
+with open(filename, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("FILE SAVED:", filename)
+print("DONE!")
