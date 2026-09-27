@@ -1,28 +1,18 @@
-name: Generate AI Post with GitHub Models
+name: Generate AI Post
 on:
-  workflow_dispatch: # يسمح بالتشغيل اليدوي من واجهة GitHub
-
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # صلاحية كتابة الملفات في المستودع
-      models: read    # صلاحية أساسية للوصول إلى GitHub Models
-
+      contents: write
+      models: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-
-      - name: Install dependencies
-        run: pip install openai
-
-      - name: Generate Post
-        env:
+      - run: pip install openai
+      - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python generate.py
-
