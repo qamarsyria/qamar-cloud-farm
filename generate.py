@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from openai import OpenAI
 
 token = os.environ["GITHUB_TOKEN"]
@@ -8,38 +9,27 @@ client = OpenAI(
     api_key=token,
 )
 
-try:
-    response = client.chat.completions.create(
-        model="openai/gpt-4o-mini",
-        messages=[
-            {"role": "user", "content": "اكتب مقالاً قصيراً عن فوائد القراءة اليومية في 5 أسطر."}
-        ],
-        temperature=0.7,
-        max_tokens=500
-    )
+timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M")
+os.makedirs("posts", exist_ok=True)
 
-    print("Response type:", type(response))
+response = client.chat.completions.create(
+    model="openai/gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": "أنت كاتب محتوى عربي محترف."},
+        {"role": "user", "content": "اكتب مقالاً قصيراً عن فوائد القراءة اليومية في 5 أسطر."}
+    ],
+    temperature=0.7,
+    max_tokens=500
+)
 
-    if hasattr(response, "choices"):
-        post_content = response.choices[0].message.content
-    else:
-        post_content = str(response)
+post_content = response.choices[0].message.content
 
-    print("=" * 50)
-    print(post_content)
-    print("=" * 50)
+print("=" * 50)
+print(post_content)
+print("=" * 50)
 
-    with open("daily_post.txt", "w", encoding="utf-8") as f:
-        f.write(post_content)
+filename = f"posts/post-{timestamp}.txt"
+with open(filename, "w", encoding="utf-8") as f:
+    f.write(post_content)
 
-    print("SUCCESS: File saved!")
-
-except Exception as e:
-    print("=" * 50)
-    print("FAILED!")
-    print("=" * 50)
-    print(f"Error type: {type(e).__name__}")
-    print(f"Error message: {e}")
-    import traceback
-    traceback.print_exc()
-    raise
+print(f"SUCCESS: File saved to {filename}")
