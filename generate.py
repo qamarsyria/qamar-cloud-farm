@@ -1,35 +1,48 @@
 import os
-from datetime import datetime
-from openai import OpenAI
+import requests
 
 token = os.environ["GITHUB_TOKEN"]
 
-client = OpenAI(
-    base_url="https://models.github.ai/inference",
-    api_key=token,
-)
+print("=" * 60)
+print("Token exists:", bool(token))
+print("Token length:", len(token) if token else 0)
+print("Token prefix:", token[:8] if token else "NONE")
+print("=" * 60)
 
-timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M")
-os.makedirs("posts", exist_ok=True)
-
-response = client.chat.completions.create(
-    model="openai/gpt-4o-mini",
-    messages=[
-        {"role": "system", "content": "أنت كاتب محتوى عربي محترف."},
-        {"role": "user", "content": "اكتب مقالاً قصيراً عن فوائد القراءة اليومية في 5 أسطر."}
+url = "https://models.github.ai/inference/chat/completions"
+headers = {
+    "Accept": "application/json",
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/json"
+}
+payload = {
+    "model": "openai/gpt-4o-mini",
+    "messages": [
+        {"role": "user", "content": "قل كلمة: نجح"}
     ],
-    temperature=0.7,
-    max_tokens=500
-)
+    "max_tokens": 20
+}
 
-post_content = response.choices[0].message.content
+print("Sending request to:", url)
+resp = requests.post(url, headers=headers, json=payload, timeout=60)
 
-print("=" * 50)
-print(post_content)
-print("=" * 50)
+print("=" * 60)
+print("STATUS CODE:", resp.status_code)
+print("=" * 60)
+print("RAW RESPONSE:")
+print(resp.text[:3000])
+print("=" * 60)
 
-filename = f"posts/post-{timestamp}.txt"
-with open(filename, "w", encoding="utf-8") as f:
-    f.write(post_content)
-
-print(f"SUCCESS: File saved to {filename}")
+if resp.status_code == 200:
+    data = resp.json()
+    print("PARSED JSON KEYS:", list(data.keys()))
+    if "choices" in data:
+        content = data["choices"][0]["message"]["content"]
+        print("CONTENT:", content)
+        with open("result.txt", "w", encoding="utf-8") as f:
+            f.write(content)
+        print("FILE SAVED!")
+    else:
+        print("NO 'choices' in response!")
+else:
+    print("REQUEST FAILED!")
