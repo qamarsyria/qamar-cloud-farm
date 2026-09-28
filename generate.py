@@ -1,25 +1,40 @@
 import os
 import json
 import random
+import smtplib
 import urllib.request
 import urllib.error
 from datetime import datetime
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 
-api_key = os.environ["GROQ_API_KEY"]
+GROQ_API_KEY = os.environ["GROQ_API_KEY"]
+GMAIL_USER = os.environ.get("GMAIL_USER", "")
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+BLOGGER_EMAIL = os.environ.get("BLOGGER_EMAIL", "")
+
+print("Groq:", bool(GROQ_API_KEY))
+print("Gmail:", bool(GMAIL_USER))
+print("Blogger:", bool(BLOGGER_EMAIL))
 
 TOPICS = [
-    ("تقنية", "أفضل تطبيقات الذكاء الاصطناعي في 2026"),
-    ("صحة", "عادات صحية بسيطة تغير حياتك"),
-    ("طبخ", "وصفة عربية سريعة في 15 دقيقة"),
-    ("موضة", "ألوان الموضة لهذا الموسم"),
-    ("إسلاميات", "أذكار الصباح والمساء وأثرها"),
-    ("أبراج", "توقعات اليوم لجميع الأبراج"),
-    ("رياضة", "أهم مباريات هذا الأسبوع"),
-    ("سياحة", "أجمل الأماكن السياحية في العالم"),
-    ("تعليم", "طرق فعّالة لحفظ المفردات"),
-    ("سيارات", "أحدث السيارات الكهربائية"),
-    ("تطوير ذات", "كيف تبني عادة القراءة اليومية"),
-    ("مال", "خطوات بسيطة لتوفير المال"),
+    ("tech", "أفضل تطبيقات الذكاء الاصطناعي في 2026"),
+    ("health", "عادات صحية بسيطة تغير حياتك"),
+    ("cooking", "وصفة عربية سريعة في 15 دقيقة"),
+    ("fashion", "ألوان الموضة لهذا الموسم"),
+    ("islamic", "أذكار الصباح والمساء وأثرها"),
+    ("horoscope", "توقعات اليوم لجميع الأبراج"),
+    ("sports", "أهم مباريات هذا الأسبوع"),
+    ("travel", "أجمل الأماكن السياحية في العالم"),
+    ("education", "طرق فعّالة لحفظ المفردات"),
+    ("cars", "أحدث السيارات الكهربائية"),
+    ("selfdev", "كيف تبني عادة القراءة اليومية"),
+    ("money", "خطوات بسيطة لتوفير المال"),
+    ("tech", "مستقبل العملات الرقمية في 2026"),
+    ("health", "فوائد شرب الماء على الريق"),
+    ("cooking", "أفضل وصفات الحلويات الشرقية"),
+    ("travel", "أفضل الوجهات السياحية الرخيصة"),
 ]
 
 topic_cat, topic_title = random.choice(TOPICS)
@@ -28,7 +43,7 @@ print(f"Topic: [{topic_cat}] {topic_title}")
 url = "https://api.groq.com/openai/v1/chat/completions"
 headers = {
     "Content-Type": "application/json",
-    "Authorization": f"Bearer {api_key}",
+    "Authorization": f"Bearer {GROQ_API_KEY}",
     "User-Agent": "Mozilla/5.0"
 }
 
@@ -37,15 +52,15 @@ payload = {
     "messages": [
         {
             "role": "system",
-            "content": "أنت كاتب محتوى عربي محترف. اكتب مقالاً مفيداً بعنوان جذاب، بأسلوب واضح وجذاب."
+            "content": "أنت كاتب محتوى عربي محترف. اكتب مقالاً مفيداً بعنوان جذاب في البداية، بأسلوب واضح ومنظم مع فقرات قصيرة."
         },
         {
             "role": "user",
-            "content": f"اكتب مقالاً قصيراً (5-6 أسطر) عن: {topic_title}"
+            "content": f"اكتب مقالاً قصيراً (5-7 أسطر) عن: {topic_title}"
         }
     ],
     "temperature": 0.8,
-    "max_tokens": 1000
+    "max_tokens": 1200
 }
 
 req = urllib.request.Request(
@@ -76,3 +91,25 @@ fn = f"posts/{safe_cat}-{ts}.txt"
 with open(fn, "w", encoding="utf-8") as f:
     f.write(f"# {topic_title}\n\n{content}")
 print("SAVED:", fn)
+
+if GMAIL_USER and GMAIL_APP_PASSWORD and BLOGGER_EMAIL:
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = formataddr(("قمر المعرفة", GMAIL_USER))
+        msg["To"] = BLOGGER_EMAIL
+        msg["Subject"] = topic_title
+
+        html_body = f"""<h1>{topic_title}</h1>
+{content.replace(chr(10), '<br>')}
+"""
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=60) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_USER, BLOGGER_EMAIL, msg.as_string())
+
+        print("PUBLISHED TO BLOGGER!")
+    except Exception as e:
+        print("BLOGGER PUBLISH ERROR:", type(e).__name__, str(e)[:300])
+else:
+    print("Blogger secrets missing - skipping publish")
