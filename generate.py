@@ -4,11 +4,15 @@ import re
 import random
 import html
 import urllib.request
-import urllib.error
 from datetime import datetime
 
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 SITE_URL = "https://qamarsyria.github.io/qamar-cloud-farm"
+
+SOCIAL_BAR = '<script src="https://pl31550649.profitableratecpmnetwork.com/92/61/d9/9261d933b308eb828b628c26fe0bcc81.js"></script>'
+
+NATIVE_BANNER = '''<script async="async" data-cfasync="false" src="https://pl31550650.profitableratecpmnetwork.com/72fe6369c79d70b638130f8c07117e01/invoke.js"></script>
+<div id="container-72fe6369c79d70b638130f8c07117e01"></div>'''
 
 TOPICS = [
     ("tech", "أفضل تطبيقات الذكاء الاصطناعي في 2026"),
@@ -38,25 +42,21 @@ footer{margin-top:60px;padding-top:20px;border-top:1px solid #334155;color:#6474
 .post-card a{color:#fbbf24;text-decoration:none;font-size:20px;font-weight:bold}
 .post-card .cat{display:inline-block;background:#334155;color:#94a3b8;padding:3px 10px;border-radius:15px;font-size:12px;margin-top:10px}
 .back{color:#fbbf24;text-decoration:none;display:inline-block;margin-top:20px}
+.ad-slot{margin:25px 0;text-align:center;min-height:90px}
 """
 
 topic_cat, topic_title = random.choice(TOPICS)
 print(f"Topic: {topic_title}")
 
 url = "https://api.groq.com/openai/v1/chat/completions"
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {GROQ_API_KEY}",
-    "User-Agent": "Mozilla/5.0"
-}
+headers = {"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}", "User-Agent": "Mozilla/5.0"}
 payload = {
     "model": "openai/gpt-oss-120b",
     "messages": [
         {"role": "system", "content": "أنت كاتب محتوى عربي محترف. اكتب مقالاً مفيداً بعنوان جذاب، بأسلوب واضح ومنظم."},
         {"role": "user", "content": f"اكتب مقالاً قصيراً (5-7 فقرات) عن: {topic_title}"}
     ],
-    "temperature": 0.8,
-    "max_tokens": 1200
+    "temperature": 0.8, "max_tokens": 1200
 }
 req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
 with urllib.request.urlopen(req, timeout=90) as resp:
@@ -65,9 +65,16 @@ content = data["choices"][0]["message"]["content"]
 
 ts = datetime.now().strftime("%Y-%m-%d-%H-%M")
 slug = f"{topic_cat}-{ts}"
-body_html = "".join(f"<p>{html.escape(line.strip())}</p>" for line in content.split("\n") if line.strip())
 
-post_html = f"""<!DOCTYPE html>
+paras = [html.escape(line.strip()) for line in content.split("\n") if line.strip()]
+body_parts = []
+for i, p in enumerate(paras):
+    body_parts.append(f"<p>{p}</p>")
+    if i == 1:
+        body_parts.append(f'<div class="ad-slot">{NATIVE_BANNER}</div>')
+body_html = "".join(body_parts)
+
+post_html = f'''<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -85,8 +92,9 @@ post_html = f"""<!DOCTYPE html>
 <a href="../index.html" class="back">← العودة للرئيسية</a>
 </article>
 <footer>© 2026 قمر المعرفة</footer>
+{SOCIAL_BAR}
 </body>
-</html>"""
+</html>'''
 
 os.makedirs("posts", exist_ok=True)
 with open(f"posts/{slug}.html", "w", encoding="utf-8") as f:
@@ -110,7 +118,7 @@ cards = "\n".join(
     for p in posts
 )
 
-index_html = f"""<!DOCTYPE html>
+index_html = f'''<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -125,8 +133,9 @@ index_html = f"""<!DOCTYPE html>
 {cards}
 </main>
 <footer>© 2026 قمر المعرفة</footer>
+{SOCIAL_BAR}
 </body>
-</html>"""
+</html>'''
 
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(index_html)
