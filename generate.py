@@ -1,22 +1,14 @@
 import os
 import json
+import re
 import random
-import smtplib
+import html
 import urllib.request
 import urllib.error
 from datetime import datetime
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import formataddr
 
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-GMAIL_USER = os.environ.get("GMAIL_USER", "")
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
-BLOGGER_EMAIL = os.environ.get("BLOGGER_EMAIL", "")
-
-print("Groq:", bool(GROQ_API_KEY))
-print("Gmail:", bool(GMAIL_USER))
-print("Blogger:", bool(BLOGGER_EMAIL))
+SITE_URL = "https://qamarsyria.github.io/qamar-cloud-farm"
 
 TOPICS = [
     ("tech", "أفضل تطبيقات الذكاء الاصطناعي في 2026"),
@@ -31,14 +23,25 @@ TOPICS = [
     ("cars", "أحدث السيارات الكهربائية"),
     ("selfdev", "كيف تبني عادة القراءة اليومية"),
     ("money", "خطوات بسيطة لتوفير المال"),
-    ("tech", "مستقبل العملات الرقمية في 2026"),
-    ("health", "فوائد شرب الماء على الريق"),
-    ("cooking", "أفضل وصفات الحلويات الشرقية"),
-    ("travel", "أفضل الوجهات السياحية الرخيصة"),
 ]
 
+STYLE = """
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.9;direction:rtl;padding:20px;max-width:800px;margin:0 auto;min-height:100vh}
+header{padding:30px 0;border-bottom:1px solid #334155;margin-bottom:30px;text-align:center}
+header a{color:#fbbf24;text-decoration:none;font-size:24px;font-weight:bold}
+h1{color:#fbbf24;font-size:26px;margin-bottom:15px;line-height:1.5}
+.meta{color:#94a3b8;font-size:13px;margin-bottom:25px;padding-bottom:20px;border-bottom:1px solid #1e293b}
+.content p{margin-bottom:18px;font-size:17px}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid #334155;color:#64748b;text-align:center;font-size:13px}
+.post-card{background:#1e293b;padding:20px;border-radius:12px;margin-bottom:15px;border:1px solid #334155}
+.post-card a{color:#fbbf24;text-decoration:none;font-size:20px;font-weight:bold}
+.post-card .cat{display:inline-block;background:#334155;color:#94a3b8;padding:3px 10px;border-radius:15px;font-size:12px;margin-top:10px}
+.back{color:#fbbf24;text-decoration:none;display:inline-block;margin-top:20px}
+"""
+
 topic_cat, topic_title = random.choice(TOPICS)
-print(f"Topic: [{topic_cat}] {topic_title}")
+print(f"Topic: {topic_title}")
 
 url = "https://api.groq.com/openai/v1/chat/completions"
 headers = {
@@ -46,70 +49,95 @@ headers = {
     "Authorization": f"Bearer {GROQ_API_KEY}",
     "User-Agent": "Mozilla/5.0"
 }
-
 payload = {
     "model": "openai/gpt-oss-120b",
     "messages": [
-        {
-            "role": "system",
-            "content": "أنت كاتب محتوى عربي محترف. اكتب مقالاً مفيداً بعنوان جذاب في البداية، بأسلوب واضح ومنظم مع فقرات قصيرة."
-        },
-        {
-            "role": "user",
-            "content": f"اكتب مقالاً قصيراً (5-7 أسطر) عن: {topic_title}"
-        }
+        {"role": "system", "content": "أنت كاتب محتوى عربي محترف. اكتب مقالاً مفيداً بعنوان جذاب، بأسلوب واضح ومنظم."},
+        {"role": "user", "content": f"اكتب مقالاً قصيراً (5-7 فقرات) عن: {topic_title}"}
     ],
     "temperature": 0.8,
     "max_tokens": 1200
 }
-
-req = urllib.request.Request(
-    url,
-    data=json.dumps(payload).encode("utf-8"),
-    headers=headers,
-    method="POST"
-)
-
-try:
-    with urllib.request.urlopen(req, timeout=90) as resp:
-        body = resp.read().decode("utf-8")
-except urllib.error.HTTPError as e:
-    print("ERROR:", e.code, e.read().decode("utf-8")[:500])
-    raise SystemExit(1)
-
-data = json.loads(body)
+req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+with urllib.request.urlopen(req, timeout=90) as resp:
+    data = json.loads(resp.read().decode("utf-8"))
 content = data["choices"][0]["message"]["content"]
 
-print("=" * 60)
-print(content)
-print("=" * 60)
+ts = datetime.now().strftime("%Y-%m-%d-%H-%M")
+slug = f"{topic_cat}-{ts}"
+body_html = "".join(f"<p>{html.escape(line.strip())}</p>" for line in content.split("\n") if line.strip())
+
+post_html = f"""<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{html.escape(topic_title)}</title>
+<meta name="description" content="{html.escape(content[:155])}">
+<style>{STYLE}</style>
+</head>
+<body>
+<header><a href="../index.html">🌙 قمر المعرفة</a></header>
+<article>
+<h1>{html.escape(topic_title)}</h1>
+<div class="meta">{datetime.now().strftime('%Y-%m-%d')} · {topic_cat}</div>
+<div class="content">{body_html}</div>
+<a href="../index.html" class="back">← العودة للرئيسية</a>
+</article>
+<footer>© 2026 قمر المعرفة</footer>
+</body>
+</html>"""
 
 os.makedirs("posts", exist_ok=True)
-ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
-safe_cat = topic_cat.replace("/", "-")
-fn = f"posts/{safe_cat}-{ts}.txt"
-with open(fn, "w", encoding="utf-8") as f:
-    f.write(f"# {topic_title}\n\n{content}")
-print("SAVED:", fn)
+with open(f"posts/{slug}.html", "w", encoding="utf-8") as f:
+    f.write(post_html)
+print("SAVED:", slug)
 
-if GMAIL_USER and GMAIL_APP_PASSWORD and BLOGGER_EMAIL:
-    try:
-        msg = MIMEMultipart()
-        msg["From"] = formataddr(("قمر المعرفة", GMAIL_USER))
-        msg["To"] = BLOGGER_EMAIL
-        msg["Subject"] = topic_title
+posts = []
+for fname in sorted(os.listdir("posts"), reverse=True):
+    if not fname.endswith(".html"):
+        continue
+    with open(f"posts/{fname}", "r", encoding="utf-8") as f:
+        phtml = f.read()
+    m = re.search(r"<title>(.*?)</title>", phtml)
+    title = m.group(1) if m else fname
+    m = re.search(r'<div class="meta">(.*?)</div>', phtml)
+    meta = m.group(1) if m else ""
+    posts.append({"slug": fname.replace(".html", ""), "title": title, "meta": meta})
 
-        html_body = f"""<h1>{topic_title}</h1>
-{content.replace(chr(10), '<br>')}
-"""
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
+cards = "\n".join(
+    f'<div class="post-card"><a href="posts/{p["slug"]}.html">{html.escape(p["title"])}</a><div class="cat">{p["meta"]}</div></div>'
+    for p in posts
+)
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=60) as server:
-            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-            server.sendmail(GMAIL_USER, BLOGGER_EMAIL, msg.as_string())
+index_html = f"""<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>قمر المعرفة — مقالات عربية يومية</title>
+<meta name="description" content="مدونة عربية تنشر مقالات يومية في التقنية والصحة والطبخ والسفر.">
+<style>{STYLE}</style>
+</head>
+<body>
+<header><a href="index.html">🌙 قمر المعرفة</a></header>
+<main>
+{cards}
+</main>
+<footer>© 2026 قمر المعرفة</footer>
+</body>
+</html>"""
 
-        print("PUBLISHED TO BLOGGER!")
-    except Exception as e:
-        print("BLOGGER PUBLISH ERROR:", type(e).__name__, str(e)[:300])
-else:
-    print("Blogger secrets missing - skipping publish")
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(index_html)
+print("INDEX built with", len(posts), "posts")
+
+sitemap = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+           f'<url><loc>{SITE_URL}/</loc><priority>1.0</priority></url>']
+for p in posts:
+    sitemap.append(f'<url><loc>{SITE_URL}/posts/{p["slug"]}.html</loc><priority>0.8</priority></url>')
+sitemap.append('</urlset>')
+with open("sitemap.xml", "w", encoding="utf-8") as f:
+    f.write("\n".join(sitemap))
+print("SITEMAP built")
