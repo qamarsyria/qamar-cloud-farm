@@ -9,15 +9,18 @@ from datetime import datetime
 
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 SITE_URL = "https://qamarsyria.github.io/qamar-cloud-farm"
+SITE_NAME = "قمر المعرفة"
+SITE_DESC = "مدونة عربية تنشر مقالات يومية في التقنية والصحة والطبخ والسفر."
 
-POSTS_PER_RUN = 5
+POSTS_PER_RUN = 2  # تم تخفيضها من 5 إلى 2 لتحسين الجودة ومنع التكرار
+
+STATE_FILE = "used_titles.json"
 
 SOCIAL_BAR = '<script src="https://pl31550649.profitableratecpmnetwork.com/92/61/d9/9261d933b308eb828b628c26fe0bcc81.js"></script>'
 
 NATIVE_BANNER = '''<script async="async" data-cfasync="false" src="https://pl31550650.profitableratecpmnetwork.com/72fe6369c79d70b638130f8c07117e01/invoke.js"></script>
 <div id="container-72fe6369c79d70b638130f8c07117e01"></div>'''
 
-# ==== المواضيع العامة فقط (بدون إسلاميات) ====
 TOPICS = [
     ("tech", "أفضل تطبيقات الذكاء الاصطناعي في 2026"),
     ("tech", "كيف تحمي خصوصيتك على الإنترنت"),
@@ -90,6 +93,16 @@ footer{margin-top:60px;padding-top:20px;border-top:1px solid #334155;color:#6474
 .ad-slot{margin:25px 0;text-align:center;min-height:90px}
 """
 
+def load_used_titles():
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    return set()
+
+def save_used_titles(used):
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(list(used), f, ensure_ascii=False, indent=2)
+
 def generate_article(topic_title):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}", "User-Agent": "Mozilla/5.0"}
@@ -108,17 +121,20 @@ def generate_article(topic_title):
 
 # ==== توليد مقالات متعددة ====
 os.makedirs("posts", exist_ok=True)
-used_titles = set()
+used_titles = load_used_titles()
 generated = 0
 
-topics_shuffled = TOPICS.copy()
-random.shuffle(topics_shuffled)
+# فلترة المواضيع المستخدمة
+available_topics = [(cat, title) for cat, title in TOPICS if title not in used_titles]
+random.shuffle(available_topics)
 
-for topic_cat, topic_title in topics_shuffled:
+if not available_topics:
+    print("⚠️ تم استخدام جميع المواضيع! يرجى إضافة مواضيع جديدة إلى قائمة TOPICS.")
+    exit(0)
+
+for topic_cat, topic_title in available_topics:
     if generated >= POSTS_PER_RUN:
         break
-    if topic_title in used_titles:
-        continue
 
     print("=" * 50)
     print(f"[{generated+1}/{POSTS_PER_RUN}] [{topic_cat}] {topic_title}")
@@ -171,6 +187,8 @@ for topic_cat, topic_title in topics_shuffled:
     if generated < POSTS_PER_RUN:
         time.sleep(15)
 
+# حفظ المواضيع المستخدمة
+save_used_titles(used_titles)
 print("=" * 50)
 print(f"Generated {generated} posts")
 
@@ -197,16 +215,16 @@ index_html = f'''<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>قمر المعرفة — مقالات عربية يومية</title>
-<meta name="description" content="مدونة عربية تنشر مقالات يومية في التقنية والصحة والطبخ والسفر.">
+<title>{SITE_NAME} — مقالات عربية يومية</title>
+<meta name="description" content="{SITE_DESC}">
 <style>{STYLE}</style>
 </head>
 <body>
-<header><a href="index.html">🌙 قمر المعرفة</a></header>
+<header><a href="index.html">🌙 {SITE_NAME}</a></header>
 <main>
 {cards}
 </main>
-<footer>© 2026 قمر المعرفة</footer>
+<footer>© 2026 {SITE_NAME}</footer>
 {SOCIAL_BAR}
 </body>
 </html>'''
@@ -225,3 +243,30 @@ sitemap.append('</urlset>')
 with open("sitemap.xml", "w", encoding="utf-8") as f:
     f.write("\n".join(sitemap))
 print("SITEMAP built")
+
+# ==== بناء feed.xml (RSS Feed جديد) ====
+now = datetime.now().strftime("%a, %d %b %Y %H:%M:%S +0000")
+rss_items = []
+for p in posts[:30]:
+    rss_items.append(f'''    <item>
+      <title>{html.escape(p["title"])}</title>
+      <link>{SITE_URL}/posts/{p["slug"]}.html</link>
+      <guid>{SITE_URL}/posts/{p["slug"]}.html</guid>
+      <pubDate>{now}</pubDate>
+    </item>''')
+
+rss_feed = f'''<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>{SITE_NAME}</title>
+    <link>{SITE_URL}</link>
+    <description>{SITE_DESC}</description>
+    <language>ar</language>
+    <lastBuildDate>{now}</lastBuildDate>
+{chr(10).join(rss_items)}
+  </channel>
+</rss>'''
+
+with open("feed.xml", "w", encoding="utf-8") as f:
+    f.write(rss_feed)
+print("RSS FEED built")
