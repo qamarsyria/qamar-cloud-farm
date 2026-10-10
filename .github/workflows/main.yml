@@ -1,0 +1,27 @@
+name: Generate AI Post
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python generate.py
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add posts/ index.html sitemap.xml feed.xml used_titles.json
+          git commit -m "Add new posts + update RSS" || echo "No changes"
+          git push
