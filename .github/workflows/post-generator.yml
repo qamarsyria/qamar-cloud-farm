@@ -1,8 +1,11 @@
-دname: Post Generator
+name: Post Generator
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 */6 * * *'
+concurrency:
+  group: post-generator
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
