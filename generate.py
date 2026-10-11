@@ -11,8 +11,7 @@ GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 SITE_URL = "https://qamarsyria.github.io/qamar-cloud-farm"
 SITE_NAME = "قمر المعرفة"
 SITE_DESC = "مدونة عربية تنشر مقالات يومية في التقنية والصحة والطبخ والسفر."
-MITGO_VERIFICATION = '<meta name="mitgo-verification" content="c25aebd5-6eb4-4ef8-bf0a-d9f45d942b12" />'
-
+MITGO_VERIFICATION = '<meta name="mitgo-verification" content="a1a81429-a91f-49f9-b037-62e90d769b85" />'
 POSTS_PER_RUN = 2
 
 STATE_FILE = "used_titles.json"
