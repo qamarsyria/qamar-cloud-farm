@@ -11,8 +11,9 @@ GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 SITE_URL = "https://qamarsyria.github.io/qamar-cloud-farm"
 SITE_NAME = "قمر المعرفة"
 SITE_DESC = "مدونة عربية تنشر مقالات يومية في التقنية والصحة والطبخ والسفر."
+MITGO_VERIFICATION = '<meta name="mitgo-verification" content="c25aebd5-6eb4-4ef8-bf0a-d9f45d942b12" />'
 
-POSTS_PER_RUN = 2  # تم تخفيضها من 5 إلى 2 لتحسين الجودة ومنع التكرار
+POSTS_PER_RUN = 2
 
 STATE_FILE = "used_titles.json"
 
@@ -119,12 +120,10 @@ def generate_article(topic_title):
         data = json.loads(resp.read().decode("utf-8"))
     return data["choices"][0]["message"]["content"]
 
-# ==== توليد مقالات متعددة ====
 os.makedirs("posts", exist_ok=True)
 used_titles = load_used_titles()
 generated = 0
 
-# فلترة المواضيع المستخدمة
 available_topics = [(cat, title) for cat, title in TOPICS if title not in used_titles]
 random.shuffle(available_topics)
 
@@ -161,6 +160,7 @@ for topic_cat, topic_title in available_topics:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{MITGO_VERIFICATION}
 <title>{html.escape(topic_title)}</title>
 <meta name="description" content="{html.escape(content[:155])}">
 <style>{STYLE}</style>
@@ -187,12 +187,10 @@ for topic_cat, topic_title in available_topics:
     if generated < POSTS_PER_RUN:
         time.sleep(15)
 
-# حفظ المواضيع المستخدمة
 save_used_titles(used_titles)
 print("=" * 50)
 print(f"Generated {generated} posts")
 
-# ==== بناء index.html ====
 posts = []
 for fname in sorted(os.listdir("posts"), reverse=True):
     if not fname.endswith(".html"):
@@ -215,6 +213,7 @@ index_html = f'''<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{MITGO_VERIFICATION}
 <title>{SITE_NAME} — مقالات عربية يومية</title>
 <meta name="description" content="{SITE_DESC}">
 <style>{STYLE}</style>
@@ -233,7 +232,6 @@ with open("index.html", "w", encoding="utf-8") as f:
     f.write(index_html)
 print(f"INDEX built with {len(posts)} posts")
 
-# ==== بناء sitemap.xml ====
 sitemap = ['<?xml version="1.0" encoding="UTF-8"?>',
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
            f'<url><loc>{SITE_URL}/</loc><priority>1.0</priority></url>']
@@ -244,7 +242,6 @@ with open("sitemap.xml", "w", encoding="utf-8") as f:
     f.write("\n".join(sitemap))
 print("SITEMAP built")
 
-# ==== بناء feed.xml (RSS Feed جديد) ====
 now = datetime.now().strftime("%a, %d %b %Y %H:%M:%S +0000")
 rss_items = []
 for p in posts[:30]:
