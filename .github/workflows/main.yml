@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: generate-post
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -31,7 +31,6 @@ jobs:
         run: python generate.py
       - name: Commit and push
         run: |
-          git add posts/ index.html sitemap.xml feed.xml used_titles.json
-          git commit -m "Add new posts + update RSS" || echo "No changes"
-          git pull --no-rebase -X ours origin main
-          git push
+          git add -A
+          git commit -m "Auto update posts" || echo "No changes"
+          git push --force origin main
