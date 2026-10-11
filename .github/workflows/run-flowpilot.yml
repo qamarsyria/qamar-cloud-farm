@@ -24,8 +24,6 @@ jobs:
           mkdir -p project/workflows
 
       - name: Create workflow config
-        env:
-          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           cat > project/workflows/rss-to-telegram.yaml << 'EOF'
           name: rss-to-telegram
@@ -41,13 +39,12 @@ jobs:
               type: telegram
               retry: { attempts: 3, delay: 10 }
               with:
-                chat_id: "PLACEHOLDER_CHAT_ID"
+                chat_id: "-1003697774569"
                 disable_preview: false
                 text: |
                   {{ trigger.entry.title }}
                   {{ trigger.entry.link }}
           EOF
-          sed -i "s|PLACEHOLDER_CHAT_ID|${CHAT_ID}|g" project/workflows/rss-to-telegram.yaml
 
       - name: Run flowpilot
         env:
